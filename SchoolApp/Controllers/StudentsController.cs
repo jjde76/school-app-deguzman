@@ -20,10 +20,29 @@ namespace SchoolApp.Controllers
             _context = context;
         }
 
-        // GET: Students
-        public async Task<IActionResult> Index()
+        // GET: Students?searchString=maria
+        public async Task<IActionResult> Index(string? searchString)
         {
-            return View(await _context.Student.ToListAsync());
+            // Start with all students
+            var students = from s in _context.Student select s;
+
+            // Check if the user typed something
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                // Convert to lowercase
+                var text = searchString.ToLower();
+
+                // Search by name, student number or email
+                students = students.Where(s => s.Name!.ToLower().Contains(text)
+                                             || s.StudentNo!.ToLower().Contains(text)
+                                             || s.Email!.ToLower().Contains(text));
+            }
+
+            // Keep the search text in the search box
+            ViewData["searchString"] = searchString;
+
+            // Display the search results
+            return View(await students.ToListAsync());
         }
 
         // GET: Students/Details/5
@@ -36,6 +55,7 @@ namespace SchoolApp.Controllers
 
             var student = await _context.Student
                 .FirstOrDefaultAsync(m => m.StudentId == id);
+
             if (student == null)
             {
                 return NotFound();
@@ -51,8 +71,6 @@ namespace SchoolApp.Controllers
         }
 
         // POST: Students/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("StudentId,StudentNo,Name,Email,ConfirmEmail,Phone,Age,BirthDate")] Student student)
@@ -60,7 +78,6 @@ namespace SchoolApp.Controllers
             // Is there already a student with this email?
             if (await _context.Student.AnyAsync(s => s.Email == student.Email))
             {
-                // Put an error on Email; the student is not saved
                 ModelState.AddModelError("Email", "This email is already registered.");
             }
 
@@ -70,6 +87,7 @@ namespace SchoolApp.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             return View(student);
         }
 
@@ -82,16 +100,16 @@ namespace SchoolApp.Controllers
             }
 
             var student = await _context.Student.FindAsync(id);
+
             if (student == null)
             {
                 return NotFound();
             }
+
             return View(student);
         }
 
         // POST: Students/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("StudentId,StudentNo,Name,Email,ConfirmEmail,Phone,Age,BirthDate")] Student student)
@@ -125,8 +143,10 @@ namespace SchoolApp.Controllers
                         throw;
                     }
                 }
+
                 return RedirectToAction(nameof(Index));
             }
+
             return View(student);
         }
 
@@ -140,6 +160,7 @@ namespace SchoolApp.Controllers
 
             var student = await _context.Student
                 .FirstOrDefaultAsync(m => m.StudentId == id);
+
             if (student == null)
             {
                 return NotFound();
@@ -154,6 +175,7 @@ namespace SchoolApp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var student = await _context.Student.FindAsync(id);
+
             if (student != null)
             {
                 _context.Student.Remove(student);
